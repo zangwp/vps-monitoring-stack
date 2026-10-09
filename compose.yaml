@@ -1,0 +1,76 @@
+name: vps-monitoring-stack
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: ${CADDY_IMAGE:?Set CADDY_IMAGE in .env}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+      KOMARI_DOMAIN: ${KOMARI_DOMAIN:?Set KOMARI_DOMAIN}
+      UMAMI_DOMAIN: ${UMAMI_DOMAIN:?Set UMAMI_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    networks: [frontend]
+    logging: *logging
+
+  komari:
+    image: ${KOMARI_IMAGE:?Set KOMARI_IMAGE}
+    restart: unless-stopped
+    volumes:
+      - ./data/komari:/app/data
+    networks: [frontend]
+    logging: *logging
+
+  umami:
+    image: ${UMAMI_IMAGE:?Set UMAMI_IMAGE}
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgresql://umami:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@umami-db:5432/umami
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET}
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY:?Set TWO_FACTOR_ENCRYPTION_KEY}
+      DISABLE_TELEMETRY: "1"
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks: [frontend, database]
+    logging: *logging
+
+  umami-db:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: umami
+      POSTGRES_DB: umami
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [database]
+    logging: *logging
+
+networks:
+  frontend:
+  database:
+    internal: true

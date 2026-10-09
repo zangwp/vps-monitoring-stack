@@ -1,0 +1,21 @@
+name: Validate deployment files
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check shell scripts
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          shellcheck scripts/*.sh
+      - name: Generate and validate configuration
+        run: |
+          bash scripts/init.sh
+          before=$(sha256sum .env)
+          bash scripts/init.sh
+          test "$before" = "$(sha256sum .env)"
+          docker compose config --quiet
+          docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

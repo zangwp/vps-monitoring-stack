@@ -1,0 +1,7 @@
+.env
+.env.*
+.env.tmp.*
+!.env.example
+data/
+backups/
+*.log

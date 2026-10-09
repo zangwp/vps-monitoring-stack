@@ -1,0 +1,21 @@
+{
+    email {$ACME_EMAIL}
+}
+
+{$KOMARI_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy komari:25774
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
+
+{$UMAMI_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy umami:3000
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}
