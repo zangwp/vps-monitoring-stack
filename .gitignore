@@ -3,5 +3,7 @@
 .env.tmp.*
 !.env.example
 data/
+certs/
 backups/
 *.log
+__pycache__/

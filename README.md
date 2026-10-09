@@ -14,13 +14,23 @@ flowchart LR
   Umami -->|5432 / 独立内部网络| PostgreSQL
 ```
 
-只有 Caddy 发布主机端口。数据库只连接 Umami；应用仍可出网。HTTP 自动跳转到 HTTPS，Caddy 原生代理 WebSocket。配置不启用 HTTP/3，所以无需开放 UDP 443。
+只有 Caddy 发布主机端口。部署脚本自动检测并保存空闲端口，数据库只连接 Umami；应用仍可出网。HTTP 自动跳转到 HTTPS，Caddy 原生代理 WebSocket。配置不启用 HTTP/3，所以无需开放 UDP 443。
+
+### 自动检测和随机端口
+
+VPS 需要安装 `python3`。默认 `PORT_MODE=auto` 优先使用 80/443，冲突时从 10000–49999 随机选空闲 TCP 端口。希望一开始就使用高位端口，可设置 `PORT_MODE=random`，并保持 `HTTP_PORT=auto`、`HTTPS_PORT=auto`。也支持填写具体端口，脚本会检查是否被占用。
+
+脚本检查 IPv4/IPv6 绑定和正在运行的 Docker 容器端口映射；端口确定后保存到 `.env`，升级不会重新随机。已保存的端口若被其他服务抢占，脚本报错，不会偷偷改变 URL；需要重新选择时将对应值改回 `auto`。检测与 Docker 启动之间存在时间间隔，其他进程仍可能抢占，最终以 Docker 绑定结果为准。
+
+非标准 HTTPS 端口访问形如 `https://komari.example.com:23456`。部署脚本打印真实地址；Agent 服务端地址和 Umami 统计脚本地址也要带该端口。云安全组和防火墙需要放行选定端口，CDN 可能不支持任意高位端口。
+
+**证书条件：** 至少有公网 80 或 443 正确指向本栈时，可使用默认 ACME 验证（若只保留其中一个标准端口，另一种验证可能先失败再回退）。两者都被占用且没有入口转发时，需要通过 DNS 验证预先签发证书，保存到 `certs/komari/fullchain.pem`、`certs/komari/privkey.pem` 和 `certs/umami/` 下的同名文件；脚本自动改用 `Caddyfile.manual`。缺少证书时停止部署并提示，不会降级为明文 HTTP。手动证书需要独立续期并在更新后重启 Caddy；证书和私钥不提交到 Git，恢复到新 VPS 时须另外准备。更方便的替代方案是复用已有入口代理提供 HTTPS。
 
 ### 与其他项目共用 VPS 时的端口
 
 | 服务 | 容器内端口 | 发布到主机 | 会否与其他项目冲突 |
 | --- | --- | --- | --- |
-| Caddy | 80 / 443 | TCP 80 / 443 | 同一主机 IP 上已有服务监听时会冲突 |
+| Caddy | 选定 HTTP / HTTPS 端口 | 对应 TCP 端口 | 自动检测避免已占用端口 |
 | Komari | 25774 | 无 | 容器网络内使用，不占用主机同号端口 |
 | Umami | 3000 | 无 | 容器网络内使用，不占用主机同号端口 |
 | PostgreSQL | 5432 | 无 | 容器网络内使用，不占用主机同号端口 |
@@ -34,7 +44,7 @@ docker ps --format 'table {{.Names}}\t{{.Ports}}'
 
 已有网站时建议复用唯一的入口反向代理，让不同域名转发到不同应用。需要修改此模板：移除本栈 Caddy 服务；若代理运行在宿主机，将 Komari 和 Umami 分别映射到空闲的回环端口（例如 `127.0.0.1:12577:25774` 和 `127.0.0.1:13000:3000`），由已有代理提供 HTTPS，并保留 Komari 的 WebSocket 支持。若入口代理也在 Docker 中，可以加入共用 Docker 网络并直接访问应用容器，不必发布应用端口。数据库始终不发布端口。移除 Caddy 后，部署脚本中的 Caddy 验证步骤也需要同步调整。
 
-这里的回环端口只是例子，使用前仍需确认空闲。不要简单把 Caddy 改成 8080/8443 后就认为完成标准 HTTPS 配置：公网 80/443 的证书验证与流量入口仍需正确转发或另外配置 DNS 验证。默认配置适用于 80/443 空闲的 VPS。
+这里的回环端口只是例子，使用前仍需确认空闲。高位端口模式的证书条件见上文；共用入口代理仍然是同机多网站部署的推荐方式。
 
 ## 相比原教程的改进
 
@@ -57,7 +67,7 @@ docker compose version
 sudo ss -ltnp '( sport = :80 or sport = :443 )'
 ```
 
-80/443 应无监听。如果已有网站、Nginx、面板或 Caddy 占用端口，先规划复用现有代理，避免直接停掉业务服务。
+如果已有网站、Nginx、面板或 Caddy 占用端口，可以使用自动检测的高位端口并准备证书，或复用现有代理，避免直接停掉业务服务。
 
 DNS 为 `komari.你的域名` 和 `umami.你的域名` 设置指向 VPS 的 A 记录。存在 AAAA 记录时也必须指向可访问的 IPv6。首次部署建议使用 DNS 直连，后续使用 CDN 时检查真实 IP 与证书配置。
 
@@ -126,7 +136,7 @@ test -f COMPLETE
 sha256sum -c SHA256SUMS
 cd /srv/vps-monitoring-stack
 # 目标目录必须是新实例；不要在运行中的旧实例执行。
-cp /srv/restore/backup/.env /srv/restore/backup/compose.yaml /srv/restore/backup/Caddyfile .
+cp /srv/restore/backup/.env /srv/restore/backup/compose.yaml /srv/restore/backup/Caddyfile /srv/restore/backup/Caddyfile.manual .
 chmod 600 .env
 mkdir -p data
 test ! -e data/komari

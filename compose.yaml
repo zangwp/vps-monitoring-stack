@@ -11,14 +11,17 @@ services:
     image: ${CADDY_IMAGE:?Set CADDY_IMAGE in .env}
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${HTTP_PORT:-80}:${HTTP_PORT:-80}"
+      - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
     environment:
       ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
       KOMARI_DOMAIN: ${KOMARI_DOMAIN:?Set KOMARI_DOMAIN}
       UMAMI_DOMAIN: ${UMAMI_DOMAIN:?Set UMAMI_DOMAIN}
+      HTTP_PORT: ${HTTP_PORT:-80}
+      HTTPS_PORT: ${HTTPS_PORT:-443}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./${CADDY_CONFIG:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
       - ./data/caddy/data:/data
       - ./data/caddy/config:/config
     networks: [frontend]

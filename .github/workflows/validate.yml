@@ -17,5 +17,7 @@ jobs:
           before=$(sha256sum .env)
           bash scripts/init.sh
           test "$before" = "$(sha256sum .env)"
+          python3 tests/test_ports.py
+          python3 scripts/select_ports.py
           docker compose config --quiet
           docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

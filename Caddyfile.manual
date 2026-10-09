@@ -1,0 +1,16 @@
+{
+    http_port {$HTTP_PORT}
+    https_port {$HTTPS_PORT}
+}
+
+{$KOMARI_DOMAIN} {
+    tls /certs/komari/fullchain.pem /certs/komari/privkey.pem
+    encode zstd gzip
+    reverse_proxy komari:25774
+}
+
+{$UMAMI_DOMAIN} {
+    tls /certs/umami/fullchain.pem /certs/umami/privkey.pem
+    encode zstd gzip
+    reverse_proxy umami:3000
+}

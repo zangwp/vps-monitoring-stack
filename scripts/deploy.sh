@@ -7,6 +7,7 @@ if grep -Eq '^(ACME_EMAIL|KOMARI_DOMAIN|UMAMI_DOMAIN)=.*example\.com' .env; then
   exit 1
 fi
 docker compose version >/dev/null
+python3 scripts/select_ports.py
 docker compose config --quiet
 docker compose pull
 docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
