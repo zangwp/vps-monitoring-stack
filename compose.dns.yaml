@@ -1,0 +1,7 @@
+services:
+  caddy:
+    image: vps-monitoring-caddy:2.10.2-cloudflare
+    build:
+      context: ./docker/caddy
+    environment:
+      CF_API_TOKEN: ${CF_API_TOKEN:?Enter Cloudflare API Token}

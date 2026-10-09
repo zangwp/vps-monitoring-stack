@@ -9,7 +9,8 @@ fi
 docker compose version >/dev/null
 python3 scripts/select_ports.py
 docker compose config --quiet
-docker compose pull
+docker compose pull --ignore-buildable
+docker compose build --pull
 docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 docker compose up -d --wait --wait-timeout 240
 docker compose ps

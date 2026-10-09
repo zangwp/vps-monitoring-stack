@@ -27,9 +27,9 @@ tar -czf "$backup/komari.tar.gz" -C data komari
 tar -tzf "$backup/komari.tar.gz" >/dev/null
 docker compose start komari
 komari_stopped=0
-cp .env compose.yaml Caddyfile Caddyfile.manual "$backup/"
+cp .env compose.yaml compose.dns.yaml Caddyfile Caddyfile.manual Caddyfile.dns "$backup/"
 docker compose images > "$backup/images.txt"
-(cd "$backup"; sha256sum umami.dump komari.tar.gz .env compose.yaml Caddyfile Caddyfile.manual images.txt umami.contents > SHA256SUMS)
+(cd "$backup"; sha256sum umami.dump komari.tar.gz .env compose.yaml compose.dns.yaml Caddyfile Caddyfile.manual Caddyfile.dns images.txt umami.contents > SHA256SUMS)
 touch "$backup/COMPLETE"
 echo "Backup complete: $backup"
 echo 'Contains secrets and personal data. Keep an encrypted off-server copy; incomplete folders lack COMPLETE.'

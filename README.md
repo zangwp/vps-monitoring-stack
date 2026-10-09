@@ -2,6 +2,26 @@
 
 用 Docker Compose 部署 **Komari + Umami + PostgreSQL + Caddy**：VPS 资源监控、网站访问统计与自动 HTTPS。
 
+## 一条命令启动安装向导（推荐）
+
+在 Ubuntu / Debian VPS 的 SSH 终端执行（需已有 curl）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zangwp/vps-monitoring-stack/main/install.sh -o /tmp/vps-monitoring-install.sh && sudo bash /tmp/vps-monitoring-install.sh
+```
+
+随后按提示输入：Komari 域名、Umami 域名、邮箱、端口模式和证书方式。脚本安装依赖、在没有 Docker 时通过官方 apt 源安装 Docker、下载项目到 `/opt/vps-monitoring-stack`、生成随机密钥并启动服务。重复运行保留数据库密码和应用密钥；重新配置域名/端口前请先备份，地址变更后同步更新 Agent 和网站统计脚本。使用已有 Docker 时要求它有 Compose v2，并且服务可以连接。
+
+证书选项：
+
+1. **自动 HTTPS**：适用于公网 80 或 443 可用并正确指向本实例，无需填写证书文件。
+2. **Cloudflare DNS 自动证书**：适用于 80/443 已被占用或使用随机高位端口。在终端输入 Cloudflare API Token（隐藏输入，保存于权限 0600 的 `.env`），Caddy 自动申请并续期。Token 对所需域名区域授予 `Zone:Read` 和 `DNS:Edit` 权限；脚本构建带 DNS 插件的 Caddy，首次构建需要时间和内存。参见 [插件官方说明](https://github.com/caddy-dns/cloudflare)。
+3. **已有证书**：在终端输入两个域名的证书链和私钥路径，脚本复制到项目证书目录；续期由你现有的证书工具负责。
+
+DNS 的 A/AAAA 记录仍需先在域名服务商处指向 VPS。Cloudflare 模式只管理证书验证 TXT 记录，不改你的网站解析；随机高位端口通常需要 DNS 直连，Cloudflare 代理不支持任意端口。脚本打印应放行的真实端口，不自动修改云安全组、现有防火墙或 SSH 配置。首次使用仍需在浏览器完成 Komari 初始化和修改 Umami 默认密码。
+
+后面的章节提供手动部署和运维说明；使用向导无需逐段执行。
+
 这是个人部署模板，不是上游软件的官方发行版。Komari 负责服务器监控；Umami 负责网站访问统计。网站主动探测、故障告警需要另行配置 Komari 的相应功能或专门的可用性监控服务。
 
 ## 架构
@@ -136,7 +156,7 @@ test -f COMPLETE
 sha256sum -c SHA256SUMS
 cd /srv/vps-monitoring-stack
 # 目标目录必须是新实例；不要在运行中的旧实例执行。
-cp /srv/restore/backup/.env /srv/restore/backup/compose.yaml /srv/restore/backup/Caddyfile /srv/restore/backup/Caddyfile.manual .
+cp /srv/restore/backup/.env /srv/restore/backup/compose*.yaml /srv/restore/backup/Caddyfile* .
 chmod 600 .env
 mkdir -p data
 test ! -e data/komari

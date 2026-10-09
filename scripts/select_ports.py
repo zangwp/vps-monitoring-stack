@@ -73,7 +73,7 @@ def main():
                 raise RuntimeError(f'{key}={port} is occupied. Stop the conflicting service or set it to auto.')
             selected[key] = port
     config = values.get('CADDY_CONFIG', 'Caddyfile')
-    if selected['HTTP_PORT'] != 80 and selected['HTTPS_PORT'] != 443:
+    if config == 'Caddyfile' and selected['HTTP_PORT'] != 80 and selected['HTTPS_PORT'] != 443:
         config = 'Caddyfile.manual'
     if config == 'Caddyfile.manual':
         for site in ('komari', 'umami'):

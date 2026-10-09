@@ -1,0 +1,21 @@
+{
+    email {$ACME_EMAIL}
+    http_port {$HTTP_PORT}
+    https_port {$HTTPS_PORT}
+}
+
+{$KOMARI_DOMAIN} {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+    encode zstd gzip
+    reverse_proxy komari:25774
+}
+
+{$UMAMI_DOMAIN} {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+    encode zstd gzip
+    reverse_proxy umami:3000
+}
