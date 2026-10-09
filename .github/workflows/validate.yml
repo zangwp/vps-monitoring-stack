@@ -20,6 +20,7 @@ jobs:
           python3 tests/test_ports.py
           python3 tests/test_installer.py
           sudo python3 scripts/select_ports.py
+          sudo chown "$(id -u):$(id -g)" .env
           docker compose config --quiet
           docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Validate DNS certificate configuration
